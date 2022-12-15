@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 import enum
+import glob
+import struct
 
-DEFAULT_RAM_SIZE = 0x4000
+from elftools.elf.elffile import ELFFile
 
 # Instructions are always 4-byte aligned for RV32I
 INST_ALIGN = 4
@@ -44,23 +46,28 @@ class Funct7(enum.Enum):
     SRAI = SUB = SRA = 0b0100000
 
 
+DEFAULT_RAM_SIZE = 0x1000
+
 class SphinxRAM:
     def __init__(self, ram_size=DEFAULT_RAM_SIZE):
-        self.ram = "\x00" * ram_size
+        self.ram_size = ram_size
+        self.ram = b"\x00" * ram_size
 
     def __str__(self):
         ram_str = ""
         for i, data in enumerate(self.ram):
-            ram_str += "0x{0:1X}: 0x{0:1X}".format(i, data)
-            if i > 0 and i % 8 == 0:
+            ram_str += f"{i:03X}: {data:02X}    "
+            if i != 0 and i % 8 == 0:
                 ram_str += "\n"
         return ram_str
 
+    def write(self, data, addr=0):
+        print(type(data))
+        print(type(self.ram))
+        self.ram = self.ram[:addr] + data + self.ram[addr+len(data):]
+
     def dump(self):
         print(self.__str__())
-
-    def load_program(self):
-        pass
 
 
 class SphinxCPU:
@@ -69,8 +76,9 @@ class SphinxCPU:
         + [f"a{i}" for i in range(8)] \
         + [f"s{i}" for i in range(2, 12)]
 
-    def __init__(self):
+    def __init__(self, start_pc=0):
         self.registers = self.reset_regs()
+        self.registers["pc"] = start_pc
         self.time_period = 0
 
     def __str__(self):
@@ -86,15 +94,40 @@ class SphinxCPU:
         print(self.__str__())
 
     def reset_regs(self):
-        return { r: 0 for r in REGISTER_NAMES }
+        return { r: 0 for r in self.REGISTER_NAMES }
 
-    def next_cycle(self):
-        pass
+    def next_cycle(self, ram):
+        # Fetch
+        
+        # Decode
+
+        # Execute
+
+        # Memory Access
+
+        # Write back
+
+        # Increment PC
+        self.registers["pc"] += INST_ALIGN
 
 
 if __name__ == "__main__":
     sphinx_cpu = SphinxCPU()
     sphinx_ram = SphinxRAM()
 
+    #for f in glob.glob("tests/riscv-tests/isa/rv32ui-p-*"):
+    f = "tests/riscv-tests/isa/rv32ui-p-xor"
+    print(f"File: {f}")
+    with open(f, "rb") as ff:
+        e = ELFFile(ff)
+        seg = e.get_segment(1)
+        print("****\n** SEGMENT **\n****")
+        hex_str = ""
+        for i, b in enumerate(seg.data()):
+            if i > 0 and i % 16 == 0:
+                print(hex_str)
+                hex_str = ""
+            hex_str += f"{b:02x} "
+
     # Load program into RAM
-    sphinx_ram.load()
+    #sphinx_ram.load()
