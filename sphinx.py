@@ -54,16 +54,14 @@ class SphinxRAM:
         self.ram = b"\x00" * ram_size
 
     def __str__(self):
-        ram_str = ""
+        ram_str = "\n"
         for i, data in enumerate(self.ram):
-            ram_str += f"{i:03X}: {data:02X}    "
-            if i != 0 and i % 8 == 0:
+            ram_str += f"0x{i:03X}: {data:02X}  "
+            if i > 0 and i % 8 == 0:
                 ram_str += "\n"
         return ram_str
 
     def write(self, data, addr=0):
-        print(type(data))
-        print(type(self.ram))
         self.ram = self.ram[:addr] + data + self.ram[addr+len(data):]
 
     def dump(self):
@@ -85,7 +83,7 @@ class SphinxCPU:
         dump_str = f"Time period: {time_period}\n"
         dump_str += "Register states:\n"
         for i, r in enumerate(self.registers.keys()):
-            dump_str += "{0:5d}: {0:32X} ".format(r, self.registers[r])
+            dump_str += "0x{0:5d}: {0:32X} ".format(r, self.registers[r])
             if i > 0 and i % 10 == 0:
                 dump_str += "\n"
         return dump_str
