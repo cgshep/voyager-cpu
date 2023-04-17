@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 import pytest
 
+from sphinxcpu.decoder import *
 
+def test_decode_instruction_type():
+    jal_i = 0x0480006f
+    assert type(decode_instruction(jal_i)) == JType
 
 #from elftools.elf.elffile import ELFFile
 #def test_init():
