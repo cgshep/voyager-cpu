@@ -1,21 +1,74 @@
-import enum
-
 from dataclasses import dataclass
+from enum import IntEnum, Enum, unique
+
 from .utils import register_names
 
 REG_DICT = { i: reg for i, reg in enumerate(register_names()) }
 
+@unique
+class Instruction(str, Enum):
+    LUI = "LUI"
+    AUIPC = "AUIPC"
+    JAL = "JAL"
+    JALR = "JALR"
+    BEQ = "BEQ"
+    BNE = "BNE"
+    BLT = "BLT"
+    BGE = "BGE"
+    BLTU = "BLTU"
+    BGEU = "BGEU"
+    LB = "LB"
+    LH = "LH"
+    LW = "LW"
+    LBU = "LBU"
+    LHU = "LHU"
+    SB = "SB"
+    SH = "SH"
+    SW = "SW"
+    ADDI = "ADDI"
+    SLTI = "SLTI"
+    SLTIU = "SLTIU"
+    XORI = "XORI"
+    ORI = "ORI"
+    ANDI = "ANDI"
+    SLLI = "SLLI"
+    SRLI = "SRLI"
+    SRAI = "SRAI"
+    ADD = "ADD"
+    SUB = "SUB"
+    SLL = "SLL"
+    SLT = "SLT"
+    SLTU = "SLTU"
+    XOR = "XOR"
+    SRL = "SRL"
+    SRA = "SRA"
+    OR = "OR"
+    AND = "AND"
+    FENCE = "FENCE"
+    FENCE_I = "FENCE_I"
+    ECALL = "ECALL"
+    EBREAK = "EBREAK"
+    CSRRW = "CSRRW"
+    CSRRS = "CSRRS"
+    CSRRC = "CSRRC"
+    CSRRWI = "CSRRWI"
+    CSRRSI = "CSRRSI"
+    CSRRCI = "CSRRCI"
+
+
 class DecodeError(Exception):
     pass
 
+
 @dataclass
 class RVInst:
-    name: str
+    mnemonic: str
     opcode: int
 
     def __str__(self):
         # Ignore the opcode for now.
-        return self.name
+        return self.mnemonic
+
 
 @dataclass
 class RType(RVInst):
@@ -30,6 +83,7 @@ class RType(RVInst):
             f"funct3:{bin(self.funct3)},rs1:{bin(self.rs1)},"\
             f"rs2:{bin(self.rs2)},funct7:{bin(self.funct7)}"
 
+
 @dataclass
 class IType(RVInst):
     imm: int
@@ -41,6 +95,7 @@ class IType(RVInst):
         return super(IType, self).__str__() + \
             f",imm:{bin(self.imm)},rd:{REG_DICT[self.rd]}," \
             f"funct3:{bin(self.funct3)},rs1:{REG_DICT[self.rs1]}"
+
 
 @dataclass
 class SType(RVInst):
@@ -66,6 +121,7 @@ class BType(RVInst):
             f",imm:{bin(self.imm)},funct3:{bin(self.funct3)}," \
             f"rs1:{REG_DICT[self.rs1]},rs2:{REG_DICT[self.rs2]}"
 
+
 @dataclass
 class UType(RVInst):
     imm: int
@@ -74,6 +130,7 @@ class UType(RVInst):
     def __str__(self):
         return super(UType, self).__str__() + \
             f",rd:{REG_DICT[self.rd]},imm:{bin(self.imm)}"
+
 
 @dataclass
 class JType(RVInst):
@@ -84,7 +141,8 @@ class JType(RVInst):
         return super(JType, self).__str__() + \
             f",rd:{REG_DICT[self.rd]},imm:{hex(self.imm)}"
 
-class Opcode(enum.IntEnum):
+@unique
+class Opcode(IntEnum):
     # These instructions are identified using only
     # the opcode field
     LUI      = 0b0110111
@@ -126,7 +184,8 @@ class Opcode(enum.IntEnum):
     #
     SYSTEM = 0b1110011
 
-class Funct3(enum.IntEnum):
+
+class Funct3(IntEnum):
     JALR = BEQ = LB = SB = ADDI = ADD = SUB = FENCE = ECALL = EBREAK = 0b000
     BNE = LH = SH = SLLI = SLL = FENCE_I = CSRRW = 0b001
     BLT = LBU = XORI = XOR = 0b100
@@ -136,9 +195,11 @@ class Funct3(enum.IntEnum):
     LW = SW = SLTI = SLT = CSRRS = 0b010
     SLTIU = SLTU = CSRRC = 0b011
 
-class Funct7(enum.IntEnum):
+
+class Funct7(IntEnum):
     SLLI = SRLI = ADD = SLL = SLT = SLTU = XOR = SRL = OR = AND = 0b0000000
     SRAI = SUB = SRA = 0b0100000
+
 
 def jtype_imm(inst: int) -> int:
     """
@@ -152,9 +213,9 @@ def jtype_imm(inst: int) -> int:
     return sign_extend((((inst >> 31) & 0b1) << 20) |
                        (((inst >> 12) & 0b11111111) << 12) |
                        (((inst >> 20) & 0b1) << 11) |
-                       (((inst >> 21) & 0x3FF) << 1))
+                       (((inst >> 21) & 0x3FF) << 1), 20)
 
-def btype_imm(inst: int) -> int:
+def btype_imm(inst: int, signed=True) -> int:
     """
     Decodes B-type immediates.
 
@@ -163,14 +224,16 @@ def btype_imm(inst: int) -> int:
     Returns:
         int: B-type immediate value.
     """
-    b_imm1 = (inst >> 12) & 0xFFFFFF
+    b_imm1 = (inst >> 7) & 0b11111
     b_imm2 = (inst >> 25) & 0b1111111
-    return sign_extend(((b_imm2 >> 5) << 12) |
-                       ((b_imm1 & 0b1) << 11) |
-                       ((b_imm2 & 0b111111) << 5) |
-                       ((b_imm1 >> 1) << 1))
+    x = ((b_imm2 >> 5) << 12) | \
+        ((b_imm1 & 0b1) << 11) | \
+        ((b_imm2 & 0b111111) << 5) | \
+        ((b_imm1 >> 1) << 1)
 
-def itype_imm(inst: int) -> int:
+    return sign_extend(x, 12) if signed else x
+    
+def itype_imm(inst: int, signed=True) -> int:
     """
     Decodes an I-type immediate value.
 
@@ -180,7 +243,8 @@ def itype_imm(inst: int) -> int:
     Returns:
        int: I-type immediate value.
     """
-    return sign_extend((inst >> 20) & 0xFFF)
+    x = (inst >> 20) & 0xFFF
+    return sign_extend(x, 12) if signed else x
 
 def stype_imm(inst: int) -> int:
     """
@@ -193,7 +257,7 @@ def stype_imm(inst: int) -> int:
        int: S-type immediate value.
     """
     return sign_extend((((inst >> 25) & 0b1111111) << 5) |
-                       ((inst >> 7) & 0b11111))
+                       ((inst >> 7) & 0b11111), 12)
 
 def utype_imm(inst: int) -> int:
     """
@@ -246,118 +310,123 @@ def decode_instruction(inst: int) -> RVInst:
     rd = (inst >> 7) & 0b11111
     rs1 = (inst >> 15) & 0b11111
     rs2 = (inst >> 20) & 0b11111
-    inst_type = name = None
+    inst_type = mnemonic = None
+    imm_signed = True
 
     if opcode == Opcode.LUI:
         inst_type = UType
-        name = "LUI"
+        mnemonic = Instruction.LUI
     elif opcode == Opcode.AUIPC:
         inst_type = UType
-        name = "AUIPC"
+        mnemonic = Instruction.AUIPC
     elif opcode == Opcode.JAL:
         inst_type = JType
-        name = "JAL"
+        mnemonic = Instruction.JAL
     elif opcode == Opcode.JALR:
         inst_type = IType
-        name = "JALR"
+        mnemonic = Instruction.JALR
     elif opcode == Opcode.BRANCH:
         inst_type = BType
         if funct3 == Funct3.BEQ:
-            name = "BEQ"
+            mnemonic = Instruction.BEQ
         elif funct3 == Funct3.BNE:
-            name = "BNE"
+            mnemonic = Instruction.BNE
         elif funct3 == Funct3.BLT:
-            name = "BLT"
+            mnemonic = Instruction.BLT
         elif funct3 == Funct3.BGE:
-            name = "BGE"
+            mnemonic = Instruction.BGE
         elif funct3 == Funct3.BLTU:
-            name = "BLTU"
+            mnemonic = Instruction.BLTU
+            imm_signed = False
         elif funct3 == Funct3.BGEU:
-            name = "BGEU"
+            mnemonic = Instruction.BGEU
+            imm_signed = False
         else:
             raise DecodeError("Invalid branch instruction!")
     elif opcode == Opcode.LOAD:
         inst_type = IType
         if funct3 == Funct3.LB:
-            name = "LB"
+            mnemonic = Instruction.LB
         elif funct3 == Funct3.LH:
-            name = "LH"
+            mnemonic = Instruction.LH
         elif funct3 == Funct3.LW:
-            name = "LW"
+            mnemonic = Instruction.LW
         elif funct3 == Funct3.LBU:
-            name = "LBU"
+            mnemonic = Instruction.LBU
+            imm_signed = False
         elif funct3 == Funct3.LHU:
-            name = "LHU"
+            mnemonic = Instruction.LHU
+            imm_signed = False
         else:
             raise DecodeError("Invalid load instruction!")
     elif opcode == Opcode.STORE:
         inst_type = SType
         if funct3 == Funct3.SB:
-            name = "SB"
+            mnemonic = Instruction.SB
         elif funct3 == Funct3.SH:
-            name = "SH"
+            mnemonic = Instruction.SH
         elif funct3 == Funct3.SW:
-            name = "SW"
+            mnemonic = Instruction.SW
         else:
             raise DecodeError("Invalid store instruction!")
     elif opcode == Opcode.IMMEDIATE:
         inst_type = IType
         if funct3 == Funct3.ADDI:
-            name = "ADDI"
+            mnemonic = Instruction.ADDI
         elif funct3 == Funct3.SLTI:
-            name = "SLTI"
+            mnemonic = Instruction.SLTI
         elif funct3 == Funct3.SLTIU:
-            name = "SLTIU"
+            mnemonic = Instruction.SLTIU
+            imm_signed = False
         elif funct3 == Funct3.XORI:
-            name = "XORI"
+            mnemonic = Instruction.XORI
         elif funct3 == Funct3.ORI:
-            name = "ORI"
+            mnemonic = Instruction.ORI
         elif funct3 == Funct3.ANDI:
-            name = "ANDI"
+            mnemonic = Instruction.ANDI
         elif funct3 == Funct3.SLLI:
-            name = "SLLI"
+            mnemonic = Instruction.SLLI
         elif funct3 == Funct3.SRLI:
             if funct7 == Funct7.SRLI:
-                name = "SRLI"
+                mnemonic = Instruction.SRLI
             elif funct7 == Funct7.SRAI:
-                name = "SRAI"
+                mnemonic = Instruction.SRAI
             else:
                 raise DecodeError("Invalid funct7!")
         else:
             raise DecodeError("Invalid funct3!")
     elif opcode == Opcode.ARITHMETIC:
         inst_type = RType
-        name = "ARITH"
         if funct3 == Funct3.ADD:
             if funct7 == Funct7.ADD:
-                name = "ADD"
+                mnemonic = Instruction.ADD
             elif funct7 == Funct7.SUB:
-                name = "SUB"
+                mnemonic = Instruction.SUB
         elif funct3 == Funct3.SLL:
-            name = "SLL"
+            mnemonic = Instruction.SLL
         elif funct3 == Funct3.SLT:
-            name = "SLT"
+            mnemonic = Instruction.SLT
         elif funct3 == Funct3.SLTU:
-            name = "SLTU"
+            mnemonic = Instruction.SLTU
         elif funct3 == Funct3.XOR:
-            name = "XOR"
+            mnemonic = Instruction.XOR
         elif funct3 == Funct3.SRL:
             if funct7 == Funct7.SRL:
-                name = "SRL"
+                mnemonic = Instruction.SRL
             elif funct7 == Funct7.SRA:
-                name = "SRA"
+                mnemonic = Instruction.SRA
         elif funct3 == Funct3.OR:
-            name = "OR"
+            mnemonic = Instruction.OR
         elif funct3 == Funct3.AND:
-            name = "AND"
+            mnemonic = Instruction.AND
         else:
             raise DecodeError("Invalid arithmetic instruction!")
     elif opcode == Opcode.FENCES:
         inst_type = IType
         if funct3 == Funct3.FENCE:
-            name = "FENCE"
+            mnemonic = Instruction.FENCE
         elif funct3 == Funct3.FENCE_I:
-            name = "FENCE.I"
+            mnemonic = Instruction.FENCE.I
         else:
             raise DecodeError("Invalid fence instruction!")
     elif opcode == Opcode.SYSTEM:
@@ -366,45 +435,49 @@ def decode_instruction(inst: int) -> RVInst:
         inst_type = IType
         if funct3 == Funct3.ECALL:
             # ECALL and EBREAK have the same funct3.
-            # Use funct7 to select.
-            if funct7 == Funct7.ECALL:
-                name = "ECALL"
-            elif funct7 == Funct7.EBREAK:
-                name = "EBREAK"
+            # Bits [20:31] are used to differentiate them,
+            # as 0 == ECALL and 1 == EBREAK. We can get
+            # this from rs2 calculated earlier
+            if rs2 == 0:
+                mnemonic = Instruction.ECALL
+            elif rs2 == 1:
+                mnemonic = Instruction.EBREAK
             else:
                 raise DecodeError("Invalid environment instruction!")
         elif funct3 == Funct3.CSRRW:
-            name = "CSRRW"
+            mnemonic = Instruction.CSRRW
         elif funct3 == Funct3.CSRRS:
-            name = "CSRRS"
+            mnemonic = Instruction.CSRRS
         elif funct3 == Funct3.CSRRC:
-            name = "CSRRC"
+            mnemonic = Instruction.CSRRC
         elif funct3 == Funct3.CSRRWI:
-            name = "CSRRWI"
+            mnemonic = Instruction.CSRRWI
         elif funct3 == Funct3.CSRRSI:
-            name = "CSRRSI"
+            mnemonic = Instruction.CSRRSI
         elif funct3 == Funct3.CSRRCI:
-            name = "CSRRCI"
+            mnemonic = Instruction.CSRRCI
         else:
             raise DecodeError("Invalid system instruction!")        
     else:
         raise DecodeError("Invalid opcode!")
 
     if inst_type == RType:
-        return RType(name=name, opcode=opcode, rd=rd, funct3=funct3,
-                     rs1=rs1, rs2=rs2, funct7=funct7)
+        return RType(mnemonic=mnemonic, opcode=opcode, rd=rd,
+                     funct3=funct3, rs1=rs1, rs2=rs2, funct7=funct7)
     elif inst_type == IType:
-        return IType(name=name, opcode=opcode, imm=itype_imm(inst),
+        return IType(mnemonic=mnemonic, opcode=opcode,
+                     imm=itype_imm(inst, signed=imm_signed),
                      rd=rd, funct3=funct3, rs1=rs1)
     elif inst_type == SType:
-        return SType(name=name, opcode=opcode, imm=stype_imm(inst),
+        return SType(mnemonic=mnemonic, opcode=opcode, imm=stype_imm(inst),
                      funct3=funct3, rs1=rs1, rs2=rs2)
     elif inst_type == BType:
-        return BType(name=name, opcode=opcode, imm=btype_imm(inst),
+        return BType(mnemonic=mnemonic, opcode=opcode,
+                     imm=btype_imm(inst, signed=imm_signed),
                      funct3=funct3, rs1=rs1, rs2=rs2)
     elif inst_type == UType:
-        return UType(name=name, opcode=opcode, imm=utype_imm(inst), rd=rd)
+        return UType(mnemonic=mnemonic, opcode=opcode, imm=utype_imm(inst), rd=rd)
     elif inst_type == JType:
-        return JType(name=name, opcode=opcode, imm=jtype_imm(inst), rd=rd)
+        return JType(mnemonic=mnemonic, opcode=opcode, imm=jtype_imm(inst), rd=rd)
     else:
         raise DecodeError("A serious error occurred.")

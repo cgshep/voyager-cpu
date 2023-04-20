@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import glob
+import logging
 import struct
 
-from .decoder import decode_instruction
+from .decoder import decode_instruction, REG_DICT
 from .utils import register_names, abi_register_name_dict
 
 from elftools.elf.elffile import ELFFile
@@ -11,6 +12,10 @@ from elftools.elf.elffile import ELFFile
 # Instructions are always 4-byte aligned for RV32I
 INST_ALIGN = 4
 DEFAULT_RAM_SIZE = 0x1000
+PC_REG_INDEX = -1
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class SphinxRAM:
     def __init__(self, ram_size=DEFAULT_RAM_SIZE):
@@ -37,15 +42,15 @@ class SphinxRAM:
 
 class SphinxCPU:
     def __init__(self, start_pc=0):
-        self.registers = self.reset_regs()
-        self.registers["pc"] = start_pc
+        self.regfile = self.reset_regs()
+        self.regfile[PC_REG_INDEX] = start_pc
         self.time_period = 0
 
-    def __str__(self):
+    def __str__(self) -> str:
         dump_str = f"Time period: {time_period}\n"
         dump_str += "Register states:\n"
-        for i, r in enumerate(self.registers.keys()):
-            dump_str += "0x{0:5d}: {0:32X} ".format(r, self.registers[r])
+        for i, r in enumerate(self.regfile.keys()):
+            dump_str += "0x{0:5d}: {0:32X} ".format(r, self.regfile[r])
             if i > 0 and i % 10 == 0:
                 dump_str += "\n"
         return dump_str
@@ -54,20 +59,113 @@ class SphinxCPU:
         print(self.__str__())
 
     def reset_regs(self) -> dict:
-        return { reg: 0 for reg in register_names() }
+        return { i: 0 for i, _ in enumerate(register_names()) }
+
+    def __fetch(self, ram):
+        logger.debug("@@@@@ Instruction fetch @@@@@")
+        raw_inst = ram.read(self.regfile[PC_REG_INDEX],
+                            INST_ALIGN)
+        logger.debug(f"Hex: 0x{raw_inst.hex()}")
+        # Convert to little endian
+        raw_inst_bin = struct.unpack("<I", raw_inst)[0]
+        logger.debug(f"Bin: {bin(raw_inst_bin)}")
+        return raw_inst_bin
+
+    def __decode(self, raw_inst: int) -> RVInst:
+        return decode_raw_instruction(raw_inst)
+
+    def __execute(self, inst: RVInst):
+        mne = inst.mnemonic
+        if mne == Instruction.LUI:
+            self.regfile[inst.rd] = inst.imm
+        elif mne == Instruction.AUIPC:
+            self.regfile[inst.rd] = self.regfile[PC_REG_INDEX] + inst.imm
+        elif mne == Instruction.JAL:
+            self.regfile[inst.rd] = self.regfile[PC_REG_INDEX] + INST_ALIGN
+            self.regfile[PC_REG_INDEX] += inst.imm
+        elif mne == Instruction.JALR:
+            self.regfile[inst.rd] = self.regfile[PC_REG_INDEX] + INST_ALIGN
+            self.regfile[PC_REG_INDEX] = self.regfile[inst.rs1] + inst.imm
+        elif type(inst) == BType:
+            if mne == Instruction.BEQ and inst.rs1 == inst.rs2:
+                self.regfile[PC_REG_INDEX] += inst.imm
+            elif mne == Instruction.BNE and inst.rs1 != inst.rs2:
+                self.regfile[PC_REG_INDEX] += inst.imm
+            elif (mne == Instruction.BLT or mne == Instruction.BLTU) and inst.rs1 < inst.rs2:
+                self.regfile[PC_REG_INDEX] += inst.imm
+            elif (mne == Instruction.BGE or mne == Instruction.BGEU) and inst.rs1 >= inst.rs2:
+                self.regfile[PC_REG_INDEX] += inst.imm
+        elif mne == Instruction.LB or mne == Instruction.LBU:
+            self.regfile[inst.rd] = ram[inst.rs1 + inst.imm]
+        elif mne == Instruction.LH or mne == Instruction.LHU:
+            addr = inst.rs1 + inst.imm
+            self.regfile[inst.rd] = ram[addr:addr+2]
+        elif mne == Instruction.LW:
+            addr = inst.rs1 + inst.imm
+            self.regfile[inst.rd] = ram[addr:addr+4]
+        elif mne == Instruction.SB:
+            ram[inst.rs1 + inst.imm] = struct.unpack("B", self.regfile[inst.rs2] & 0xFF)
+        elif mne == Instruction.SH:
+            ram[inst.rs1 + inst.imm] = struct.unpack("H", self.regfile[inst.rs2] & 0xFFFF)
+        elif mne == Instruction.SW:
+            ram[inst.rs1 + inst.imm] = struct.unpack("I", self.regfile[inst.rs2] & 0xFFFFFFFF)
+        elif mne == Instruction.ADDI:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] + inst.imm
+        elif mne == Instruction.SLTI or mne == Instruction.SLTIU:
+            self.regfile[inst.rd] = 1 if self.regfile[inst.rs1] < inst.imm else 0
+        elif mne == Instruction.XORI:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] ^ inst.imm
+        elif mne == Instruction.ORI:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] | inst.imm
+        elif mne == Instruction.ANDI:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] & inst.imm
+        elif mne == Instruction.SLLI:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] << inst.imm
+        elif mne == Instruction.SRLI:
+            sign_bit = self.regfile[inst.rs1] >> 31
+            res = self.regfile[inst.rs1] >> (inst.imm & 0x1F)
+            res |= (0xFFFFFFFF * sign_bit) << (32 - (inst.imm & 0x1F))
+            self.regfile[inst.rd] = res
+        elif mne == Instruction.SRAI:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] >> inst.imm
+        elif mne == Instruction.ADD:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] + self.regfile[inst.rs2]
+        elif mne == Instruction.SUB:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] - self.regfile[inst.rs2]
+        elif mne == Instruction.SLL:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] << self.regfile[inst.rs2]
+        elif mne == Instruction.SLT:
+            self.regfile[inst.rd] = 1 if self.regfile[inst.rs1] < self.regfile[inst.rs2] else 0
+        elif mne == Instruction.SLTU:
+            rs1_u = self.regfile[inst.rs1] & 0xFFFFFFFF
+            rs2_u = self.regfile[inst.rs2] & 0xFFFFFFFF
+            self.regfile[inst.rd] = 1 if rs1_u < rs2_u else 0
+        elif mne == Instruction.XOR:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] ^ self.regfile[inst.rs2]
+        elif mne == Instruction.SRL:
+            sign_bit = self.regfile[inst.rs1] >> 31
+            res = self.regfile[inst.rs1] >> (self.regfile[inst.rs2] & 0x1F)
+            res |= (0xFFFFFFFF * sign_bit) << (32 - (self.regfile[inst.rs2] & 0x1F))
+            self.regfile[inst.rd] = res
+        elif mne == Instruction.SRA:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] >> self.regfile[inst.rs2]
+        elif mne == Instruction.OR:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] | self.regfile[inst.rs2]
+        elif mne == Instruction.AND:
+            self.regfile[inst.rd] = self.regfile[inst.rs1] & self.regfile[inst.rs2]
+        else:
+            raise NotImplementedError()
+
 
     def next_cycle(self, ram):
-        # 1. Fetch instruction from RAM
-        print("@@@@@ Instruction fetch @@@@@")
-        raw_inst = ram.read(self.registers["pc"], INST_ALIGN)
-        print(f"Hex: 0x{raw_inst.hex()}")
-        raw_inst_bin = struct.unpack("<I", raw_inst)[0]
-        print(f"Bin: {bin(raw_inst_bin)}")
-        # Decode
-        inst_type = decode_instruction(raw_inst_bin)
-        print(inst_type)
+        # 1. Fetch instruction from our virtual RAM
+        raw_inst = self.__fetch(ram)
 
-        # Execute
+        # 2. Decode
+        decoded_inst = self.__decode(raw_inst_bin)
+
+        # 3. Execute
+        res = __execute(decoded_inst)
 
         # Memory Access
 
