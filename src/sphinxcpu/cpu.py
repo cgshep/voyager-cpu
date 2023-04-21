@@ -1,7 +1,7 @@
 import struct
 
 from decoder import *
-from utils import register_names, abi_register_name_dict
+from utils import register_names, abi_register_name_dict, logger
 
 # Instructions are always 4-byte aligned for RV32I
 INST_ALIGN = 4
@@ -45,58 +45,67 @@ class SphinxCPU:
         mne = inst.mnemonic
         r = self.regfile # For brevity
 
-        if mne == Instruction.LUI:
-            r[inst.rd] = inst.imm
-        elif mne == Instruction.AUIPC:
-            r[inst.rd] = r[PC_REG_INDEX] + inst.imm
-        elif mne == Instruction.JAL:
-            r[inst.rd] = r[PC_REG_INDEX] + INST_ALIGN
-            r[PC_REG_INDEX] += inst.imm
-        elif mne == Instruction.JALR:
-            r[inst.rd] = r[PC_REG_INDEX] + INST_ALIGN
-            r[PC_REG_INDEX] = r[inst.rs1] + inst.imm
+        if type(inst) == UType:
+            if mne == Instruction.LUI:
+                r[inst.rd] = inst.imm
+            elif mne == Instruction.AUIPC:
+                r[inst.rd] = r[PC_REG_INDEX] + inst.imm
+        elif type(inst) == JType:
+            if mne == Instruction.JAL:
+                r[inst.rd] = r[PC_REG_INDEX] + INST_ALIGN
+                r[PC_REG_INDEX] += inst.imm
         elif type(inst) == BType:
             if mne == Instruction.BEQ and inst.rs1 == inst.rs2:
                 r[PC_REG_INDEX] += inst.imm
             elif mne == Instruction.BNE and inst.rs1 != inst.rs2:
                 r[PC_REG_INDEX] += inst.imm
-            elif (mne == Instruction.BLT or mne == Instruction.BLTU) and inst.rs1 < inst.rs2:
+            elif (mne == Instruction.BLT or mne == Instruction.BLTU) \
+                 and inst.rs1 < inst.rs2:
                 r[PC_REG_INDEX] += inst.imm
-            elif (mne == Instruction.BGE or mne == Instruction.BGEU) and inst.rs1 >= inst.rs2:
+            elif (mne == Instruction.BGE or mne == Instruction.BGEU) \
+                 and inst.rs1 >= inst.rs2:
                 r[PC_REG_INDEX] += inst.imm
-        elif mne == Instruction.LB or mne == Instruction.LBU:
-            r[inst.rd] = ram[inst.rs1 + inst.imm]
-        elif mne == Instruction.LH or mne == Instruction.LHU:
-            addr = inst.rs1 + inst.imm
-            r[inst.rd] = ram[addr:addr+2]
-        elif mne == Instruction.LW:
-            addr = inst.rs1 + inst.imm
-            r[inst.rd] = ram[addr:addr+4]
-        elif mne == Instruction.SB:
-            ram[inst.rs1 + inst.imm] = struct.unpack("B", r[inst.rs2] & 0xFF)
-        elif mne == Instruction.SH:
-            ram[inst.rs1 + inst.imm] = struct.unpack("H", r[inst.rs2] & 0xFFFF)
-        elif mne == Instruction.SW:
-            ram[inst.rs1 + inst.imm] = struct.unpack("I", r[inst.rs2] & 0xFFFFFFFF)
-        elif mne == Instruction.ADDI:
-            r[inst.rd] = r[inst.rs1] + inst.imm
-        elif mne == Instruction.SLTI or mne == Instruction.SLTIU:
-            r[inst.rd] = 1 if r[inst.rs1] < inst.imm else 0
-        elif mne == Instruction.XORI:
-            r[inst.rd] = r[inst.rs1] ^ inst.imm
-        elif mne == Instruction.ORI:
-            r[inst.rd] = r[inst.rs1] | inst.imm
-        elif mne == Instruction.ANDI:
-            r[inst.rd] = r[inst.rs1] & inst.imm
-        elif mne == Instruction.SLLI:
-            r[inst.rd] = r[inst.rs1] << inst.imm
-        elif mne == Instruction.SRLI:
-            sign_bit = r[inst.rs1] >> 31
-            res = r[inst.rs1] >> (inst.imm & 0x1F)
-            res |= (0xFFFFFFFF * sign_bit) << (32 - (inst.imm & 0x1F))
-            r[inst.rd] = res
-        elif mne == Instruction.SRAI:
-            r[inst.rd] = r[inst.rs1] >> inst.imm
+        elif type(inst) == SType:
+            if mne == Instruction.SB:
+                ram[inst.rs1 + inst.imm] = struct.unpack("B", r[inst.rs2] & 0xFF)
+            elif mne == Instruction.SH:
+                ram[inst.rs1 + inst.imm] = struct.unpack("H", r[inst.rs2] & 0xFFFF)
+            elif mne == Instruction.SW:
+                ram[inst.rs1 + inst.imm] = struct.unpack("I", r[inst.rs2] & 0xFFFFFFFF)
+        elif type(inst) == IType:
+            # JALR
+            if mne == Instruction.JALR:
+                r[inst.rd] = r[PC_REG_INDEX] + INST_ALIGN
+                r[PC_REG_INDEX] = r[inst.rs1] + inst.imm
+            # Load instructions
+            elif mne == Instruction.LB or mne == Instruction.LBU:
+                r[inst.rd] = ram[inst.rs1 + inst.imm]
+            elif mne == Instruction.LH or mne == Instruction.LHU:
+                addr = inst.rs1 + inst.imm
+                r[inst.rd] = ram[addr:addr+2]
+            elif mne == Instruction.LW:
+                addr = inst.rs1 + inst.imm
+                r[inst.rd] = ram[addr:addr+4]
+            # Arithmetic immediate instructions
+            elif mne == Instruction.ADDI:
+                r[inst.rd] = r[inst.rs1] + inst.imm
+            elif mne == Instruction.SLTI or mne == Instruction.SLTIU:
+                r[inst.rd] = 1 if r[inst.rs1] < inst.imm else 0
+            elif mne == Instruction.XORI:
+                r[inst.rd] = r[inst.rs1] ^ inst.imm
+            elif mne == Instruction.ORI:
+                r[inst.rd] = r[inst.rs1] | inst.imm
+            elif mne == Instruction.ANDI:
+                r[inst.rd] = r[inst.rs1] & inst.imm
+            elif mne == Instruction.SLLI:
+                r[inst.rd] = r[inst.rs1] << inst.imm
+            elif mne == Instruction.SRLI:
+                sign_bit = r[inst.rs1] >> 31
+                res = r[inst.rs1] >> (inst.imm & 0x1F)
+                res |= (0xFFFFFFFF * sign_bit) << (32 - (inst.imm & 0x1F))
+                r[inst.rd] = res
+            elif mne == Instruction.SRAI:
+                r[inst.rd] = r[inst.rs1] >> inst.imm
         elif type(inst) == RType:
             if mne == Instruction.ADD:
                 r[inst.rd] = r[inst.rs1] + r[inst.rs2]
@@ -132,9 +141,9 @@ class SphinxCPU:
         self.__execute(decoded_inst)
 
         # Confirm that the PC is aligned at a multiple of 4
-        if self.regfile[PC_REG_INDEX] | 0b11:
-            raise AlignmentError("Program counter is misaligned! - " \
-                                 "PC: {self.regfile[PC_REG_INDEX]}")
+        if self.regfile[PC_REG_INDEX] & 0b11:
+            raise AlignmentError(f"Program counter is misaligned! - " \
+                                 f"PC: {self.regfile[PC_REG_INDEX]}")
         
         self.regfile[PC_REG_INDEX] += INST_ALIGN
         logger.debug(self.__str__())
