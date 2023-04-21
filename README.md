@@ -1,6 +1,6 @@
 # Sphinx CPU
 
-An experimental Python emulator of a 32-bit RISC-V core built with simplicity in mind for research and educational purposes.
+Sphinx is an experimental Python emulator of a 32-bit RISC-V core. It's built with simplicity in mind for research and educational purposes.
 
 ## Features
 
