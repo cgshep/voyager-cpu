@@ -1,3 +1,33 @@
+[project]
+name = "sphinxcpu"
+version = "0.1"
+authors = [
+  { name="Carlton Shepherd", email="carlton@linux.com" },
+]
+description = "A simple Python emulation a 32-bit RISC-V CPU."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.7"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: System :: Emulators",
+    "Programming Language :: Assembly"
+]
+
+dependencies = [
+    "elftools >= 0.29"
+]
+
+[project.optional-dependencies]
+tests = [
+  'pytest>=7.0',
+]
+
 [tool.pytest.ini_options]
 pythonpath = [
   "src"

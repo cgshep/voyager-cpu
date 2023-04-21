@@ -15,7 +15,7 @@ PROGRAM_PROMPT = "> Select the test program - (1) rv32ui-p-xor, " \
     "(2) rv32ui-p-add, " \
     "(3) rv32ui-p-srai: "
 SEG_N = 1
-TEST_PROGRAM_PATH =  "../../tests/riscv-tests/isa/"
+TEST_PROGRAM_PATH =  "./tests/official-test-binaries/"
 
 if __name__ == "__main__":
     sphinx_cpu = SphinxCPU()
