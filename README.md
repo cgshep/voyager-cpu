@@ -5,7 +5,7 @@ An experimental Python emulator of a 32-bit RISC-V core built with simplicity in
 ## Features
 
 + Supports the RV32I ISA using a non-pipelined CPU with a single-cycle instruction fetch, decode, and execution stage.
-+ A simple virtual RAM into which test programs (ELF binaries) are loaded. The [official RISC-V ISA tests](https://github.com/riscv-software-src/riscv-tests/), covered under a separate [LICENSE](./tests/official-test-binaries/LICENSE.md), are used to this end.
++ A simple virtual RAM into which test programs (ELF binaries) are loaded. The [official RISC-V ISA tests](https://github.com/riscv-software-src/riscv-tests/), covered under a separate [LICENSE](./tests/official-test-binaries/LICENSE.md), can be used for this purpose.
   - Some test binaries are redistributed separately under `tests/official-test-binaries/`.
 + A basic REPL for viewing register and RAM contents, and executing the next or N cycle(s).
 + MIT license.
