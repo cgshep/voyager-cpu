@@ -12,7 +12,7 @@ An experimental Python emulator of a RISC-V core built with simplicity in mind f
 
 ## Usage
 
-1. (Optional) Build the [official RISC-V test binaries](https://github.com/riscv-software-src/riscv-tests/).
+1. (Optional) Build the [official RV32UI RISC-V test suites](https://github.com/riscv-software-src/riscv-tests/).
 2. Run `python src/sphinxcpu/core.py`
 3. (Optional) Run tests using `pytest`
 4. Enjoy!
