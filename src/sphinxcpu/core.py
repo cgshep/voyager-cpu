@@ -4,15 +4,15 @@ import glob
 import logging
 import struct
 
-from .decoder import decode_instruction, REG_DICT
-from .utils import register_names, abi_register_name_dict
+from decoder import *
+from utils import register_names, abi_register_name_dict
 
 from elftools.elf.elffile import ELFFile
 
 # Instructions are always 4-byte aligned for RV32I
 INST_ALIGN = 4
 DEFAULT_RAM_SIZE = 0x1000
-PC_REG_INDEX = -1
+PC_REG_INDEX = 32
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -47,16 +47,13 @@ class SphinxCPU:
         self.time_period = 0
 
     def __str__(self) -> str:
-        dump_str = f"Time period: {time_period}\n"
+        dump_str = f"Time period: {self.time_period}\n"
         dump_str += "Register states:\n"
         for i, r in enumerate(self.regfile.keys()):
-            dump_str += "0x{0:5d}: {0:32X} ".format(r, self.regfile[r])
-            if i > 0 and i % 10 == 0:
+            dump_str += f"{REG_DICT[i]}: {self.regfile[r]} \t"
+            if i % 5 == 0 and i > 0:
                 dump_str += "\n"
         return dump_str
-
-    def dump(self):
-        print(self.__str__())
 
     def reset_regs(self) -> dict:
         return { i: 0 for i, _ in enumerate(register_names()) }
@@ -72,7 +69,7 @@ class SphinxCPU:
         return raw_inst_bin
 
     def __decode(self, raw_inst: int) -> RVInst:
-        return decode_raw_instruction(raw_inst)
+        return decode_instruction(raw_inst)
 
     def __execute(self, inst: RVInst):
         mne = inst.mnemonic
@@ -154,25 +151,18 @@ class SphinxCPU:
         elif mne == Instruction.AND:
             self.regfile[inst.rd] = self.regfile[inst.rs1] & self.regfile[inst.rs2]
         else:
-            raise NotImplementedError()
-
+            logger.debug("System instructions not implemented")
 
     def next_cycle(self, ram):
-        # 1. Fetch instruction from our virtual RAM
         raw_inst = self.__fetch(ram)
-
-        # 2. Decode
-        decoded_inst = self.__decode(raw_inst_bin)
-
-        # 3. Execute
-        res = __execute(decoded_inst)
-
-        # Memory Access
-
-        # Write back
-
+        decoded_inst = self.__decode(raw_inst)
+        logger.debug(decoded_inst)
+        self.__execute(decoded_inst)
+        
         # Increment PC
-        self.registers["pc"] += INST_ALIGN
+        self.regfile[PC_REG_INDEX] += INST_ALIGN
+        logger.debug(self.__str__())
+        self.time_period += 1
 
 
 if __name__ == "__main__":
@@ -181,7 +171,7 @@ if __name__ == "__main__":
     
     #for f in glob.glob("tests/riscv-tests/isa/rv32ui-p-*"):
     f = "../../tests/riscv-tests/isa/rv32ui-p-xor"
-
+    MAX_STEPS = 64
     with open(f, "rb") as ff:
         e = ELFFile(ff)
         seg = e.get_segment(1)
@@ -193,8 +183,8 @@ if __name__ == "__main__":
         #        hex_str = ""
         #    hex_str += f"{b:02x} "
         sphinx_ram.write(seg.data())
-    #sphinx_ram.dump()
-    for i in range(5):
-        print(f"***\n*** Step {i} ***\n***")
+
+    for i in range(MAX_STEPS):
+        logger.debug(f"***\n*** Step {i} ***\n***")
         sphinx_cpu.next_cycle(sphinx_ram)
     
