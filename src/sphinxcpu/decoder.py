@@ -79,9 +79,8 @@ class RType(RVInst):
     funct7: int
 
     def __str__(self):
-        return super(RType,self).__str__() + f",rd:{bin(self.rd)},"\
-            f"funct3:{bin(self.funct3)},rs1:{bin(self.rs1)},"\
-            f"rs2:{bin(self.rs2)},funct7:{bin(self.funct7)}"
+        return super(RType,self).__str__() + f",rd:{hex(self.rd)},"\
+            f"rs1:{hex(self.rs1)},rs2:{hex(self.rs2)}"
 
 
 @dataclass
@@ -93,9 +92,8 @@ class IType(RVInst):
 
     def __str__(self):
         return super(IType, self).__str__() + \
-            f",imm:{bin(self.imm)},rd:{REG_DICT[self.rd]}," \
-            f"funct3:{bin(self.funct3)},rs1:{REG_DICT[self.rs1]}"
-
+            f",rd:{REG_DICT[self.rd]},rs1:{REG_DICT[self.rs1]}," \
+            f"imm:{hex(self.imm)}"
 
 @dataclass
 class SType(RVInst):
@@ -106,7 +104,7 @@ class SType(RVInst):
 
     def __str__(self):
         return super(SType, self).__str__() + \
-            f",imm:{bin(self.imm)},funct3:{bin(self.funct3)}," \
+            f",imm:{hex(self.imm)},funct3:{hex(self.funct3)}," \
             f"rs1:{REG_DICT[self.rs1]},rs2:{REG_DICT[self.rs2]}"
 
 @dataclass
@@ -118,10 +116,8 @@ class BType(RVInst):
 
     def __str__(self):
         return super(BType, self).__str__() + \
-            f",imm:{bin(self.imm)},funct3:{bin(self.funct3)}," \
-            f"rs1:{REG_DICT[self.rs1]},rs2:{REG_DICT[self.rs2]}"
-
-
+            f"rs1:{REG_DICT[self.rs1]},rs2:{REG_DICT[self.rs2]},imm:{hex(self.imm)}"
+    
 @dataclass
 class UType(RVInst):
     imm: int
@@ -129,8 +125,7 @@ class UType(RVInst):
 
     def __str__(self):
         return super(UType, self).__str__() + \
-            f",rd:{REG_DICT[self.rd]},imm:{bin(self.imm)}"
-
+            f",rd:{REG_DICT[self.rd]},imm:{hex(self.imm)}"
 
 @dataclass
 class JType(RVInst):

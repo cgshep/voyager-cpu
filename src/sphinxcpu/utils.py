@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 def abi_register_names() -> list:
     """
