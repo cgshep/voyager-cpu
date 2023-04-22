@@ -12,15 +12,18 @@ Voyager is a (very) experimental Python emulator of a 32-bit RISC-V core. It's b
 
 ## Usage
 
-1. (Optional) Get the pre-built RV32UI tests using:
+1. (Optional) Clone the pre-built RV32UI tests using:
 ```
 git submodule init
 git submodule update
 ```
 The binaries will be placed under `tests/riscv-tests-prebuilt-binaries/`. Alternatively, you can build the [test suites from the official repo](https://github.com/riscv-software-src/riscv-tests/).
+
 2. Run the example: `python src/voyagercpu/example.py`
+
 3. Enjoy!
-4. (Optional) Run tests using `pytest`
+
+4. (Optional) Run the Voyager unit tests using `pytest`
 
 ## Todo
 
