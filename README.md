@@ -7,7 +7,7 @@ Voyager is a (very) experimental Python emulator of a 32-bit RISC-V core. It's b
 + Supports the RV32I ISA using a non-pipelined CPU with a single-cycle instruction fetch, decode, and execution stage.
 + A simple virtual RAM into which test programs (ELF binaries) are loaded.
   -  The [official RISC-V ISA tests](https://github.com/riscv-software-src/riscv-tests/) can be used for this purpose. Some test binaries are redistributed separately under `tests/official-test-binaries/`, which are covered under a separate [LICENSE](./tests/official-test-binaries/LICENSE.md).
-+ A basic REPL for viewing register and RAM contents, and executing the next or N cycle(s).
++ A basic REPL for viewing register and RAM contents, and executing the next N cycles.
 + MIT license.
 
 ## Usage
