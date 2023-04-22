@@ -19,7 +19,7 @@ git submodule update
 ```
 The binaries will be placed under `tests/riscv-tests-prebuilt-binaries/`. Alternatively, you can build the [test suites from the official repo](https://github.com/riscv-software-src/riscv-tests/).
 
-2. See the example in `src/voyagercpu/example.py`. You may run this directly (`python src/voyagercpu/example.py`).
+2. See the example in `src/voyagercpu/example.py`. You may run this directly using `python src/voyagercpu/example.py`.
 
 3. Enjoy!
 
