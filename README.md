@@ -1,5 +1,11 @@
 # Voyager CPU
 
+
+<img alt="PyPI" src="https://img.shields.io/pypi/v/voyager-cpu">
+<img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/voyager-cpu">
+<img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dm/voyager-cpu">
+<img alt="PyPI - License" src="https://img.shields.io/pypi/l/voyager-cpu?label=license">
+
 Voyager is a (very) experimental Python emulator of a 32-bit RISC-V core. It's built for research and education with simplicity in mind.
 
 ## Features
