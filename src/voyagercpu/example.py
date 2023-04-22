@@ -16,7 +16,7 @@ SEG_N = 1
 TEST_PROGRAM_PATH =  "./tests/riscv-tests-prebuilt-binaries/isa/rv32ui/"
 
 if __name__ == "__main__":
-    voyager_cpu = VoyagerCPU()
+    voyager_cpu = VoyagerCPU(verbose=1)
     voyager_ram = VoyagerRAM()
 
     usr_in = input(PROGRAM_PROMPT)

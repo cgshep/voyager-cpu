@@ -1,7 +1,8 @@
 import logging
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logging.basicConfig()
+logger = logging.getLogger("voyagercpu")
+logger.setLevel(logging.ERROR)
 
 def abi_register_names() -> list:
     """
@@ -21,7 +22,7 @@ def register_names() -> list:
     """
     Returns a list of basic RISC-V register names.
 
-    These have the form x0-31. Their ABI names 
+    These have the form x0-31. Their ABI names
     may be derived using `abi_register_names()`.
 
     Returns:

@@ -11,10 +11,11 @@ class AlignmentError(Exception):
     pass
 
 class VoyagerCPU:
-    def __init__(self, start_pc=0):
+    def __init__(self, start_pc=0, verbose=0):
         self.regfile = self.reset_regs()
         self.regfile[PC_REG_INDEX] = start_pc
         self.time_period = 0
+        self.verbose = verbose
 
     def __str__(self) -> str:
         dump_str = f"Time period: {self.time_period}\n"
@@ -42,6 +43,8 @@ class VoyagerCPU:
         return decoded_inst
 
     def __execute(self, inst: RVInst):
+        if self.verbose:
+            print(inst)
         mne = inst.mnemonic
         r = self.regfile # For brevity
 
@@ -132,8 +135,8 @@ class VoyagerCPU:
                 r[inst.rd] = r[inst.rs1] | r[inst.rs2]
             elif mne == Instruction.AND:
                 r[inst.rd] = r[inst.rs1] & r[inst.rs2]
-        else:
-            logger.debug("System instructions not implemented")
+        elif verbose:
+            print("Instruction not implemented")
 
     def next_cycle(self, ram):
         raw_inst = self.__fetch(ram)
@@ -146,5 +149,4 @@ class VoyagerCPU:
                                  f"PC: {self.regfile[PC_REG_INDEX]}")
         
         self.regfile[PC_REG_INDEX] += INST_ALIGN
-        logger.debug(self.__str__())
         self.time_period += 1
