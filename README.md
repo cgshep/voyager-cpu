@@ -1,7 +1,7 @@
 # Voyager CPU
 
 <p>
-   <img alt="PyPI" src="https://img.shields.io/pypi/v/voyager-cpu">
+   <img alt="PyPI" src="https://img.shields.io/pypi/v/voyager-cpu?color=blue">
    <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/voyager-cpu">
    <img alt="PyPI - Downloads" src="https://img.shields.io/pypi/dm/voyager-cpu">
    <img alt="PyPI - License" src="https://img.shields.io/pypi/l/voyager-cpu?label=license">
