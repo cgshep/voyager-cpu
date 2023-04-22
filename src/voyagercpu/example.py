@@ -7,15 +7,12 @@ from utils import logger
 
 from elftools.elf.elffile import ELFFile
 
-# Instructions are always 4-byte aligned for RV32I
-INST_ALIGN = 4
-PC_REG_INDEX = 32
 REPL_PROMPT = "> Next step (n), view registers (r), memory (m), quit (q), or enter N steps: "
 PROGRAM_PROMPT = "> Select test program - (1, default) rv32ui-p-xor, " \
     "(2) rv32ui-p-add, " \
     "(3) rv32ui-p-srai: "
 SEG_N = 1
-TEST_PROGRAM_PATH =  "../../tests/official-test-binaries/"
+TEST_PROGRAM_PATH =  "./tests/riscv-tests-prebuilt-binaries/isa/rv32ui/"
 
 if __name__ == "__main__":
     voyager_cpu = VoyagerCPU()
