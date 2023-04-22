@@ -116,7 +116,8 @@ class BType(RVInst):
 
     def __str__(self):
         return super(BType, self).__str__() + \
-            f"rs1:{REG_DICT[self.rs1]},rs2:{REG_DICT[self.rs2]},imm:{hex(self.imm)}"
+            f",rs1:{REG_DICT[self.rs1]},rs2:{REG_DICT[self.rs2]}," \
+            f"imm:{hex(self.imm)}"
     
 @dataclass
 class UType(RVInst):
@@ -195,6 +196,15 @@ class Funct7(IntEnum):
     SLLI = SRLI = ADD = SLL = SLT = SLTU = XOR = SRL = OR = AND = 0b0000000
     SRAI = SUB = SRA = 0b0100000
 
+def nop_inst() -> RVInst:
+    """
+    Returns a NOP instruction.
+
+    Returns:
+        RVInst: IType instruction of `addi x0, x0, 0`.
+    """
+    return IType(mnemonic=Instruction.ADDI, opcode=0b0010011,
+                 imm=0, rd=0, funct3=0, rs1=0)
 
 def jtype_imm(inst: int) -> int:
     """
@@ -281,7 +291,6 @@ def sign_extend(val: int, bit_len: int=32) -> int:
     sign_bit = 1 << (bit_len - 1)
     return (val & (sign_bit - 1)) - (val & sign_bit)
     
-
 def decode_instruction(inst: int) -> RVInst:
     """
     Decodes a RV32I instruction.
@@ -428,6 +437,7 @@ def decode_instruction(inst: int) -> RVInst:
         # System instructions also differ from the
         # pre-defined types.
         inst_type = IType
+
         if funct3 == Funct3.ECALL:
             # ECALL and EBREAK have the same funct3.
             # Bits [20:31] are used to differentiate them,

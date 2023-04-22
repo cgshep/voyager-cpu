@@ -8,7 +8,8 @@ from utils import logger
 
 from elftools.elf.elffile import ELFFile
 
-REPL_PROMPT = "> Next step (n), view registers (r), memory (m), quit (q), or enter N steps: "
+REPL_PROMPT = "> Next cycle (n), enter N cycle, view current cycle (c), " \
+    "registers (r), memory (m), or quit (q): "
 PROGRAM_PROMPT = "> Select test program - (1, default) rv32ui-p-xor, " \
     "(2) rv32ui-p-add, " \
     "(3) rv32ui-p-srai: "
@@ -42,7 +43,9 @@ if __name__ == "__main__":
 
     while True:
         usr_in = input(REPL_PROMPT)
-        if "r" in usr_in:
+        if "c" in usr_in:
+            print(f"Cycle: {voyager_cpu.cycle}")
+        elif "r" in usr_in:
             print(voyager_cpu)
         elif "m" in usr_in:
             print(voyager_ram)
@@ -50,11 +53,10 @@ if __name__ == "__main__":
             break
         elif "n" in usr_in:
             voyager_cpu.next_cycle(voyager_ram)
-            logger.debug(f"Step: {i}")
         elif usr_in.isdigit():
             for i in range(int(usr_in)):
                 if i % 5 == 0:
-                    print(f"Step: {i}")
+                    print(f"Cycle: +{i}")
                 voyager_cpu.next_cycle(voyager_ram)
         else:
             print("Try again")

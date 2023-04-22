@@ -14,14 +14,14 @@ class VoyagerCPU:
     def __init__(self, start_pc=0, verbose=0):
         self.regfile = self.reset_regs()
         self.regfile[PC_REG_INDEX] = start_pc
-        self.time_period = 0
+        self.cycle = 0
         self.verbose = verbose
 
     def __str__(self) -> str:
-        dump_str = f"Time period: {self.time_period}\n"
+        dump_str = f"Cycle: {self.cycle}\n"
         dump_str += "Register states:\n"
         for i, r in enumerate(self.regfile.keys()):
-            dump_str += f"{REG_DICT[i]}: {self.regfile[r]} \t"
+            dump_str += "{:>3}: {:<12}".format(REG_DICT[i], hex(self.regfile[r]))
             if (i + 1) % 5 == 0:
                 dump_str += "\n"
         return dump_str
@@ -38,9 +38,18 @@ class VoyagerCPU:
         return raw_inst_bin
 
     def __decode(self, raw_inst: int) -> RVInst:
-        decoded_inst = decode_instruction(raw_inst)
-        logger.debug(f"Decoded: {decoded_inst}")
-        return decoded_inst
+        # No instruction
+        if raw_inst == 0:
+            logger.warning("No instruction!")
+
+        try:
+            decoded_inst = decode_instruction(raw_inst)
+            logger.debug(f"Decoded: {decoded_inst}")
+            return decoded_inst
+        except DecodeError as e:
+            logger.error(e)
+            logger.error("Using NOP instead")
+            return nop_inst()
 
     def __execute(self, inst: RVInst):
         if self.verbose:
@@ -135,8 +144,6 @@ class VoyagerCPU:
                 r[inst.rd] = r[inst.rs1] | r[inst.rs2]
             elif mne == Instruction.AND:
                 r[inst.rd] = r[inst.rs1] & r[inst.rs2]
-        elif verbose:
-            print("Instruction not implemented")
 
     def next_cycle(self, ram):
         raw_inst = self.__fetch(ram)
@@ -149,4 +156,4 @@ class VoyagerCPU:
                                  f"PC: {self.regfile[PC_REG_INDEX]}")
         
         self.regfile[PC_REG_INDEX] += INST_ALIGN
-        self.time_period += 1
+        self.cycle += 1

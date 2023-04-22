@@ -2,7 +2,7 @@ import logging
 
 logging.basicConfig()
 logger = logging.getLogger("voyagercpu")
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.WARNING)
 
 def abi_register_names() -> list:
     """
