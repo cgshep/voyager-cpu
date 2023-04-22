@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import struct
 
 from ram import VoyagerRAM
@@ -42,19 +43,19 @@ if __name__ == "__main__":
     while True:
         usr_in = input(REPL_PROMPT)
         if "r" in usr_in:
-            print(sphinx_cpu)
+            print(voyager_cpu)
         elif "m" in usr_in:
-            print(sphinx_ram)
+            print(voyager_ram)
         elif "q" in usr_in:
             break
         elif "n" in usr_in:
-            voyager_cpu.next_cycle(sphinx_ram)
+            voyager_cpu.next_cycle(voyager_ram)
             logger.debug(f"Step: {i}")
         elif usr_in.isdigit():
             for i in range(int(usr_in)):
                 if i % 5 == 0:
                     print(f"Step: {i}")
-                voyager_cpu.next_cycle(sphinx_ram)
+                voyager_cpu.next_cycle(voyager_ram)
         else:
             print("Try again")
     print("Bye!")
