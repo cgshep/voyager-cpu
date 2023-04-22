@@ -1,9 +1,9 @@
 import pytest
 
-from sphinxcpu.utils import *
+from voyagercpu.utils import *
 
 def test_abi_register_name_dict():
-#https://riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
+    #See: https://riscv.org/wp-content/uploads/2017/05/riscv-spec-v2.2.pdf
     d = abi_register_name_dict()
     assert d["x0"] == "zero"
     assert d["x1"] == "ra"

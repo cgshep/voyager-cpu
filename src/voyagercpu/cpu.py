@@ -10,7 +10,7 @@ PC_REG_INDEX = 32
 class AlignmentError(Exception):
     pass
 
-class SphinxCPU:
+class VoyagerCPU:
     def __init__(self, start_pc=0):
         self.regfile = self.reset_regs()
         self.regfile[PC_REG_INDEX] = start_pc

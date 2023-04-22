@@ -1,6 +1,6 @@
-# Sphinx CPU
+# Voyager CPU
 
-Sphinx CPU is an experimental Python emulator of a 32-bit RISC-V core. It's built with simplicity in mind for research and educational purposes.
+Voyager is a (very) experimental Python emulator of a 32-bit RISC-V core. It's built for research and education with simplicity in mind.
 
 ## Features
 
@@ -12,8 +12,13 @@ Sphinx CPU is an experimental Python emulator of a 32-bit RISC-V core. It's buil
 
 ## Usage
 
-1. (Optional) If you don't want to use the [pre-built test binaries](tests/official-test-binaries/), then build the [official RV32UI RISC-V test suites](https://github.com/riscv-software-src/riscv-tests/) from the official repo.
-2. Run `python src/sphinxcpu/core.py`
+1. (Optional) Get the pre-built RV32UI tests using:
+```
+git submodule init
+git submodule update
+```
+The binaries will be placed under `tests/riscv-tests-prebuilt-binaries/`. Alternatively, you can build the [test suites from the official repo](https://github.com/riscv-software-src/riscv-tests/).
+2. Run the example: `python src/voyagercpu/example.py`
 3. Enjoy!
 4. (Optional) Run tests using `pytest`
 

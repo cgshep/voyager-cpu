@@ -1,4 +1,4 @@
-class SphinxRAM:
+class VoyagerRAM:
     DEFAULT_RAM_SIZE = 0x1000
 
     def __init__(self, ram_size=DEFAULT_RAM_SIZE):

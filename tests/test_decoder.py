@@ -1,6 +1,6 @@
 import pytest
 
-from sphinxcpu.decoder import *
+from voyagercpu.decoder import *
 
 def test_decode_instruction_type():
     # jal x0, 72

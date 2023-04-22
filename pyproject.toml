@@ -1,10 +1,10 @@
 [project]
-name = "sphinxcpu"
+name = "voyager-cpu"
 version = "0.1"
 authors = [
   { name="Carlton Shepherd", email="carlton@linux.com" },
 ]
-description = "A simple Python emulation a 32-bit RISC-V CPU."
+description = "A simple 32-bit RISC-V CPU emulator."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.7"
