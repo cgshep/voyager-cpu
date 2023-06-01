@@ -1,4 +1,4 @@
-<img src="./voyager-logo.png" />
+<img src="./voyager-logo.png" style="max-width: 400px;" />
 
 <p>
    <img alt="PyPI" src="https://img.shields.io/pypi/v/voyager-cpu?color=blue">
