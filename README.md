@@ -1,4 +1,4 @@
-# Voyager CPU
+<img src="./voyager-logo.png" />
 
 <p>
    <img alt="PyPI" src="https://img.shields.io/pypi/v/voyager-cpu?color=blue">
