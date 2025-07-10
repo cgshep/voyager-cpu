@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from enum import IntEnum, Enum, unique
-
-from utils import register_names
+from .utils import register_names
 
 REG_DICT = { i: reg for i, reg in enumerate(register_names()) }
 
