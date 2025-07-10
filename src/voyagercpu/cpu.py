@@ -1,7 +1,7 @@
 import struct
 
-from decoder import *
-from utils import register_names, abi_register_name_dict, logger
+from .decoder import *
+from .utils import register_names, abi_register_name_dict, logger
 
 # Instructions are always 4-byte aligned for RV32I
 INST_ALIGN = 4
@@ -10,7 +10,7 @@ PC_REG_INDEX = 32
 class AlignmentError(Exception):
     pass
 
-class VoyagerCPU:
+class CPU:
     def __init__(self, start_pc=0, verbose=0):
         self.regfile = self.reset_regs()
         self.regfile[PC_REG_INDEX] = start_pc
@@ -29,9 +29,9 @@ class VoyagerCPU:
     def reset_regs(self) -> dict:
         return { i: 0 for i, _ in enumerate(register_names()) }
 
-    def __fetch(self, ram):
-        raw_inst = ram.read(self.regfile[PC_REG_INDEX],
-                            INST_ALIGN)
+    def __fetch(self, memory):
+        raw_inst = memory.read(self.regfile[PC_REG_INDEX],
+                               INST_ALIGN)
         logger.debug(f"Fetched instruction: 0x{raw_inst.hex()}")
         # Convert to little endian
         raw_inst_bin = struct.unpack("<I", raw_inst)[0]
@@ -67,23 +67,32 @@ class VoyagerCPU:
                 r[inst.rd] = r[PC_REG_INDEX] + INST_ALIGN
                 r[PC_REG_INDEX] += inst.imm
         elif type(inst) == BType:
-            if mne == Instruction.BEQ and inst.rs1 == inst.rs2:
-                r[PC_REG_INDEX] += inst.imm
-            elif mne == Instruction.BNE and inst.rs1 != inst.rs2:
-                r[PC_REG_INDEX] += inst.imm
-            elif (mne == Instruction.BLT or mne == Instruction.BLTU) \
-                 and inst.rs1 < inst.rs2:
-                r[PC_REG_INDEX] += inst.imm
-            elif (mne == Instruction.BGE or mne == Instruction.BGEU) \
-                 and inst.rs1 >= inst.rs2:
+        # Branch: compare register *values*, not indices
+            a = r[inst.rs1]
+            b = r[inst.rs2]
+            taken = False
+            if mne == Instruction.BEQ:
+                taken = (a == b)
+            elif mne == Instruction.BNE:
+                taken = (a != b)
+            elif mne == Instruction.BLT:
+                taken = (a < b)
+            elif mne == Instruction.BLTU:
+                taken = ((a & 0xFFFFFFFF) < (b & 0xFFFFFFFF))
+            elif mne == Instruction.BGE:
+                taken = (a >= b)
+            elif mne == Instruction.BGEU:
+                taken = ((a & 0xFFFFFFFF) >= (b & 0xFFFFFFFF))
+            if taken:
+                logger.debug(f"Branch {mne.name} taken: PC += {inst.imm}")
                 r[PC_REG_INDEX] += inst.imm
         elif type(inst) == SType:
             if mne == Instruction.SB:
-                ram[inst.rs1 + inst.imm] = struct.unpack("B", r[inst.rs2] & 0xFF)
+                memory[inst.rs1 + inst.imm] = struct.unpack("B", r[inst.rs2] & 0xFF)
             elif mne == Instruction.SH:
-                ram[inst.rs1 + inst.imm] = struct.unpack("H", r[inst.rs2] & 0xFFFF)
+                memory[inst.rs1 + inst.imm] = struct.unpack("H", r[inst.rs2] & 0xFFFF)
             elif mne == Instruction.SW:
-                ram[inst.rs1 + inst.imm] = struct.unpack("I", r[inst.rs2] & 0xFFFFFFFF)
+                memory[inst.rs1 + inst.imm] = struct.unpack("I", r[inst.rs2] & 0xFFFFFFFF)
         elif type(inst) == IType:
             # JALR
             if mne == Instruction.JALR:
@@ -91,13 +100,13 @@ class VoyagerCPU:
                 r[PC_REG_INDEX] = r[inst.rs1] + inst.imm
             # Load instructions
             elif mne == Instruction.LB or mne == Instruction.LBU:
-                r[inst.rd] = ram[inst.rs1 + inst.imm]
+                r[inst.rd] = memory[inst.rs1 + inst.imm]
             elif mne == Instruction.LH or mne == Instruction.LHU:
                 addr = inst.rs1 + inst.imm
-                r[inst.rd] = ram[addr:addr+2]
+                r[inst.rd] = memory[addr:addr+2]
             elif mne == Instruction.LW:
                 addr = inst.rs1 + inst.imm
-                r[inst.rd] = ram[addr:addr+4]
+                r[inst.rd] = memory[addr:addr+4]
             # Arithmetic immediate instructions
             elif mne == Instruction.ADDI:
                 r[inst.rd] = r[inst.rs1] + inst.imm
@@ -145,15 +154,37 @@ class VoyagerCPU:
             elif mne == Instruction.AND:
                 r[inst.rd] = r[inst.rs1] & r[inst.rs2]
 
-    def next_cycle(self, ram):
-        raw_inst = self.__fetch(ram)
+    def next_cycle(self, memory):
+        prev_pc = self.regfile[PC_REG_INDEX]
+        raw_inst = self.__fetch(memory)
         decoded_inst = self.__decode(raw_inst)
         self.__execute(decoded_inst)
 
         # Confirm that the PC is aligned at a multiple of 4
         if self.regfile[PC_REG_INDEX] & 0b11:
-            raise AlignmentError(f"Program counter is misaligned! - " \
+            raise AlignmentError(f"Progra mcounter is misaligned! - " \
                                  f"PC: {self.regfile[PC_REG_INDEX]}")
         
-        self.regfile[PC_REG_INDEX] += INST_ALIGN
+        if self.regfile[PC_REG_INDEX] == prev_pc:
+            self.regfile[PC_REG_INDEX] += INST_ALIGN
         self.cycle += 1
+
+    def dump_state(self):
+        """
+        Return current state as a dict for testing.
+        """
+        return {
+            "cycle": self.cycle,
+            "pc": self.regfile[PC_REG_INDEX],
+            "regs": dict(self.regfile),  # copy
+        }
+
+    def run(self, memory, max_cycles=1000):
+        """
+        Run until max_cycles or halt condition detected
+        """
+        for _ in range(max_cycles):
+            prev_pc = self.regfile[PC_REG_INDEX]
+            self.next_cycle(memory)
+            if self.regfile[PC_REG_INDEX] == prev_pc:
+                break

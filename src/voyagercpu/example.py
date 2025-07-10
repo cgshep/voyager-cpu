@@ -2,8 +2,8 @@
 
 import struct
 
-from ram import VoyagerRAM
-from cpu import VoyagerCPU
+from memory import Memory
+from cpu import CPU
 from utils import logger
 
 from elftools.elf.elffile import ELFFile
@@ -17,8 +17,8 @@ SEG_N = 1
 TEST_PROGRAM_PATH =  "./tests/riscv-tests-prebuilt-binaries/isa/rv32ui/"
 
 if __name__ == "__main__":
-    voyager_cpu = VoyagerCPU(verbose=1)
-    voyager_ram = VoyagerRAM()
+    voyager_cpu = CPU(verbose=1)
+    voyager_ram = Memory()
 
     usr_in = input(PROGRAM_PROMPT)
     f = TEST_PROGRAM_PATH
